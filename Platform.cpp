@@ -6,8 +6,10 @@
 #include <cmath>
 #include <vector>
 #include "SDL.h"
+#include "Render.h"
 
 #undef main
+
 using namespace std;
 
 
@@ -50,47 +52,6 @@ void backtest(double *path, int N, double r) {
 }
 
 
-void drawAxes(SDL_Renderer *r) {
-
-	int ymin = 0;
-	int ymax = WIN_HEIGHT;
-	double dy = WIN_HEIGHT / Y_TICKS;
-
-	SDL_SetRenderDrawColor(r, 200, 200, 200, 200);
-	
-	for (int i = ymin; i < ymax; i ++) {
-		int y = i*dy;
-		for (int j = X_MIN; j < WIN_WIDTH; j+=10)
-			SDL_RenderDrawLine(r, j, y, j+5, y);
-	}
-
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
-	SDL_RenderDrawLine(r, X_MIN, 0, X_MIN, WIN_HEIGHT);
-	SDL_RenderDrawLine(r, X_MIN, WIN_HEIGHT / 2, WIN_WIDTH, WIN_HEIGHT / 2);
-
-	SDL_RenderPresent(r);
-}
-
-void renderPath(SDL_Renderer *r, double *path, int N) {
-
-	SDL_Point *p = new SDL_Point[N];
-	double dx = X_TICKS / N;
-
-	for (int i = 0; i < N; i++) {
-		SDL_Point pt;
-		pt.x = dx*i + 20;
-		pt.y = WIN_HEIGHT / 2 + (path[i] * 6);
-		p[i] = pt;
-	}
-
-	SDL_SetRenderDrawColor(r, 0, 0, 255, 0);
-	SDL_RenderDrawLines(r, p, N);
-	SDL_RenderPresent(r);
-
-	delete[] p;
-}
-
-
 int main()
 {
 	SDL_Event event;
@@ -101,7 +62,7 @@ int main()
 
 	win = SDL_CreateWindow("Stock chart", SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
-		640, 480,
+		WIN_WIDTH, WIN_HEIGHT,
 		SDL_WINDOW_OPENGL);
 
 	if (win == NULL)
@@ -114,10 +75,10 @@ int main()
 	int pathLength = 500;
 	double *p = brownian_motion(pathLength);
 
+	CRender r;
+	r.init(rend, WIN_WIDTH, WIN_HEIGHT);
 
 	bool quit = false;
-
-	drawAxes(rend);
 
 	while (!quit) {
 
@@ -125,7 +86,7 @@ int main()
 			if (event.type == SDL_QUIT)
 				quit = true;
 
-			renderPath(rend, p, pathLength);
+			r.drawPath(p, pathLength);
 		}
 	}
 
