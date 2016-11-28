@@ -1,22 +1,57 @@
 #include "Render.h"
 
 
-CRender::CRender()
+CRender::CRender(RenderType t)
 {
 	mPath = NULL;
 	mdPath = NULL;
+
+	switch (t)
+	{
+	case stockChart:
+		mSDLWin = SDL_CreateWindow("Stock chart", SDL_WINDOWPOS_CENTERED,
+			SDL_WINDOWPOS_CENTERED,
+			1000, 500,
+			SDL_WINDOW_OPENGL);
+
+		mSDLr = SDL_CreateRenderer(mSDLWin, -1, SDL_RENDERER_ACCELERATED);
+		SDL_SetRenderDrawColor(mSDLr, 255, 255, 255, 255);
+		SDL_RenderClear(mSDLr);
+
+		init(1000, 500);
+
+		break;
+	case backtest:
+
+		mSDLWin = SDL_CreateWindow("Backtest", SDL_WINDOWPOS_CENTERED,
+			SDL_WINDOWPOS_CENTERED,
+			1000, 200,
+			SDL_WINDOW_OPENGL);
+
+		mSDLr = SDL_CreateRenderer(mSDLWin, -1, SDL_RENDERER_ACCELERATED);
+		SDL_SetRenderDrawColor(mSDLr, 255, 255, 255, 255);
+		SDL_RenderClear(mSDLr);
+
+		init(1000, 200, 10, 10, 20, 11);
+
+		break;
+	default:
+		break;
+	}
+	
 }
 
 CRender::~CRender()
 {
-	SDL_DestroyRenderer(r);
+	SDL_DestroyRenderer(mSDLr);
+	SDL_DestroyWindow(mSDLWin);
 	delete[] mPath;
 }
 
-void CRender::init(SDL_Renderer *render, int WindowWidth, int WindowHeight, int GraphWidth,
-	int GraphHeight, int GraphMarginX, int GraphMarginY, int XTicks, int YTicks) {
-
-	r = render;
+//Called once by the constructor depending on RenderType.
+//Each possible RenderType will have its own unique call to init()
+void CRender::init(int WindowWidth, int WindowHeight, int GraphMarginX,
+					int GraphMarginY, int XTicks, int YTicks) {
 
 	mWinWidth = WindowWidth;
 	mWinHeight = WindowHeight;
@@ -27,11 +62,12 @@ void CRender::init(SDL_Renderer *render, int WindowWidth, int WindowHeight, int 
 	mXTicks = XTicks;
 	mYTicks = YTicks;
 
-	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-	SDL_RenderClear(r);
+	SDL_SetRenderDrawColor(mSDLr, 255, 255, 255, 255);
+	SDL_RenderClear(mSDLr);
 
 	displayAxes();
 }
+
 
 void CRender::displayAxes() {
 
@@ -41,22 +77,23 @@ void CRender::displayAxes() {
 	double dy = double(mGraphHeight) / double(mYTicks);
 	double dx = double(mGraphWidth) / double(mXTicks);
 
-	SDL_SetRenderDrawColor(r, 200, 200, 200, 200);
+	SDL_SetRenderDrawColor(mSDLr, 200, 200, 200, 200);
 
 	for (int i = 0; i <= mYTicks; i++) {
 		int y = mGraphMarginY + double(i)*dy;
 		for (int j = mGraphMarginX; j < mGraphWidth; j += 10)
-			SDL_RenderDrawLine(r, j, y, j + 5, y);
+			SDL_RenderDrawLine(mSDLr, j, y, j + 5, y);
 	}
 
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
-	SDL_RenderDrawLine(r, xmin, mGraphMarginY, xmin, mGraphHeight + mGraphMarginY);
-	int zero = double(mGraphHeight) / 2.0;
-	SDL_RenderDrawLine(r, xmin, zero, mGraphWidth, zero);
+	SDL_SetRenderDrawColor(mSDLr, 0, 0, 0, 0);
+	SDL_RenderDrawLine(mSDLr, xmin, mGraphMarginY, xmin, mGraphHeight + mGraphMarginY);
+	int zero = mGraphHeight / 2.0;
+	SDL_RenderDrawLine(mSDLr, xmin, zero, mGraphWidth, zero);
 
-	SDL_RenderPresent(r);
+	SDL_RenderPresent(mSDLr);
 }
 
+//Set the one (and currently, only) asset price path for this particular window
 void CRender::setPath(double *path, int N, int offset) {
 	mPath = new SDL_Point[N];
 	mdPath = path;
@@ -75,11 +112,17 @@ void CRender::setPath(double *path, int N, int offset) {
 	}
 }
 
-void CRender::update() {
+//Called repetitively during main loop.
+//Needs to handle window events
+void CRender::update(SDL_Event e) {
 	
+	if (e.type == SDL_QUIT) {
+		this->~CRender();	//doesnt work
+	}
+
 	//draw main path
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
-	SDL_RenderDrawLines(r, mPath, mLen);
+	SDL_SetRenderDrawColor(mSDLr, 0, 0, 0, 0);
+	SDL_RenderDrawLines(mSDLr, mPath, mLen);
 
 	if (mAddMA) {
 		double *ma = new double[mLen];
@@ -88,7 +131,7 @@ void CRender::update() {
 
 		TA_RetCode ret = TA_MA(0, mLen - 1, &mdPath[0], 20, TA_MAType_SMA, &outBeg, &outEl, &ma[0]);
 
-		SDL_SetRenderDrawColor(r, 0, 0, 255, 0);
+		SDL_SetRenderDrawColor(mSDLr, 0, 0, 255, 0);
 		drawPath(ma, outEl, outBeg);
 	}
 	if (mAddBB) {
@@ -101,16 +144,17 @@ void CRender::update() {
 			&outBeg, &outEl, &bbu[0], &bbm[0], &bbd[0]);
 
 
-		SDL_SetRenderDrawColor(r, 200, 200, 255, 0);
+		SDL_SetRenderDrawColor(mSDLr, 200, 200, 255, 0);
 		drawPath(bbu, outEl, outBeg);
-		SDL_SetRenderDrawColor(r, 0, 0, 255, 0);
+		SDL_SetRenderDrawColor(mSDLr, 0, 0, 255, 0);
 		drawPath(bbm, outEl, outBeg);
-		SDL_SetRenderDrawColor(r, 200, 200, 255, 0);
+		SDL_SetRenderDrawColor(mSDLr, 200, 200, 255, 0);
 		drawPath(bbd, outEl, outBeg);
 	}
-	SDL_RenderPresent(r);
+	SDL_RenderPresent(mSDLr);
 }
 
+//Draw any sequence of doubles on the graph
 void CRender::drawPath(double *path, int N, int offset) {
 
 	SDL_Point *p = new SDL_Point[N];
@@ -124,7 +168,7 @@ void CRender::drawPath(double *path, int N, int offset) {
 		p[i] = pt;
 	}
 
-	SDL_RenderDrawLines(r, p, N);
+	SDL_RenderDrawLines(mSDLr, p, N);
 
 	delete[] p;
 }

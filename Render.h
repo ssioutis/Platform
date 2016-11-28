@@ -6,21 +6,25 @@
 #include "include\ta_libc.h"
 #include "include\ta_func.h"
 
+enum RenderType {
+	stockChart = 1,
+	backtest = 2
+};
+
 class CRender
 {
 public:
-	CRender();
+	CRender(RenderType t);
 	~CRender();
 
 
-	void init(SDL_Renderer *render, int WindowWidth, int WindowHeight, 
-				int GraphWidth = NULL, int GraphHeight = NULL,
+	void init(int WindowWidth, int WindowHeight, 
 				int GraphMarginX = 10, int GraphMarginY = 10,
 				int XTicks = 20, int YTicks = 21);
 
 	void displayAxes();
 	void setPath(double *path, int N, int offset = 0);
-	void update();
+	void update(SDL_Event e);
 
 	void addTA();
 
@@ -44,6 +48,7 @@ private:
 	bool mAddMA = false;
 	bool mAddBB = false;
 
-	SDL_Renderer *r;
+	SDL_Window *mSDLWin;
+	SDL_Renderer *mSDLr;
 };
 
