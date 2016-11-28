@@ -12,7 +12,6 @@
 
 using namespace std;
 
-
 #define WIN_HEIGHT	500
 #define WIN_WIDTH	1000
 #define X_MIN		10
@@ -72,11 +71,15 @@ int main()
 	SDL_SetRenderDrawColor(rend, 255, 255, 255, 255);
 	SDL_RenderClear(rend);
 	
-	int pathLength = 500;
+	const int pathLength = 500;
 	double *p = brownian_motion(pathLength);
 
 	CRender r;
 	r.init(rend, WIN_WIDTH, WIN_HEIGHT);
+	
+
+	r.setPath(p, pathLength);
+	r.addTA();
 
 	bool quit = false;
 
@@ -86,7 +89,7 @@ int main()
 			if (event.type == SDL_QUIT)
 				quit = true;
 
-			r.drawPath(p, pathLength);
+			r.update();
 		}
 	}
 

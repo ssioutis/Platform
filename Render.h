@@ -3,8 +3,8 @@
 #include <cmath>
 #include <iostream>
 #include "SDL.h"
-
-
+#include "include\ta_libc.h"
+#include "include\ta_func.h"
 
 class CRender
 {
@@ -19,9 +19,14 @@ public:
 				int XTicks = 20, int YTicks = 21);
 
 	void displayAxes();
-	void drawPath(double *path, int N);
+	void setPath(double *path, int N, int offset = 0);
+	void update();
+
+	void addTA();
 
 private:
+	void drawPath(double *path, int N, int offset = 0);
+
 	int mWinWidth;
 	int mWinHeight;
 	int mGraphMarginX;
@@ -31,6 +36,14 @@ private:
 	int mXTicks;
 	int mYTicks;
 	
+	SDL_Point *mPath;
+	double *mdPath;
+	int mLen;
+	int mOffset;
+
+	bool mAddMA = false;
+	bool mAddBB = false;
+
 	SDL_Renderer *r;
 };
 
