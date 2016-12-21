@@ -5,6 +5,8 @@
 #include "ui_mainwindow.h"
 #include "ctechnical.h"
 #include "CStrategy.h"
+#include "cstats.h"
+#include <C:\Program Files\MATLAB\MATLAB Production Server\R2015a\extern\include\engine.h>
 #include <QtWidgets/QWidget>
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
@@ -31,10 +33,10 @@ public:
 
     void runStrategy();
 
-    vector<double> SMA_crossover(vector<double> p);
-	vector<double> RSI(vector<double> p);
     void plotBacktest(vector<double> x, vector<double> y);
     void plotChart(vector<double> x, vector<double> y);
+
+    // Technical overlays
 
     void addSMA(vector<double> y, int period);
 
@@ -43,14 +45,21 @@ private:
 
     void addCurve(pair<vector<double>, vector<double>> p, string title, Qt::GlobalColor c = Qt::black);
 
-    QwtPlot *chartPlot;
+	//GUI
+    
+	QwtPlot *chartPlot;
     QWidget *chart;
     QWidget *backtest;
-    QListWidget *output;
     QPlainTextEdit *debugOutput;
+    QTableWidget *valueTable;
+    QGroupBox *autoStats;
+    QListWidget *statsOutput;
+
+	//Non-GUI
+
 	CTechnical *ct;
 	CStrategy *cs;
-	
+    CStats *stat;
 };
 
 #endif // CTRADINGPLATFORM_H

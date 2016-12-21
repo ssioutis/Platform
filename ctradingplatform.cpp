@@ -8,20 +8,28 @@ void CTradingPlatform::Init(Ui::MainWindow *ui)
 {
     chart = ui->Chart;
     backtest = ui->Backtest;
-    output = ui->backtestOutput;
     debugOutput = ui->debugOutput;
+    valueTable = ui->valueTable;
+    autoStats = ui->autoStats;
+    statsOutput = ui->statsOutput;
 
     chart->setGeometry(QRect(0, 0, 800, 400));
     backtest->setGeometry(QRect(0, 400, 800, 200));
-    output->setGeometry(QRect(800, 20, 300, 400));
-    debugOutput->setGeometry(QRect(20, 630, 800, 200));
+    debugOutput->setGeometry(QRect(20, 630, 700, 200));
+
+    valueTable->setGeometry(QRect(800, 20, 450, 500));
+    valueTable->setRowCount(0);
+    valueTable->setColumnCount(4);
+
+    autoStats->setGeometry(QRect(800, 550, 440, 440));
+    statsOutput->setGeometry(QRect(20,20,400,400));
 
     ct = new CTechnical(debugOutput);
-	cs = new CStrategy(output, debugOutput, ct);
+    cs = new CStrategy(valueTable, debugOutput, ct);
+    stat = new CStats(statsOutput);
 
     debugOutput->insertPlainText("Initialization complete\n");
 }
-
 
 //Execute the SMA crossover strategy
 void CTradingPlatform::runStrategy()
@@ -37,9 +45,10 @@ void CTradingPlatform::runStrategy()
 
     plotChart(x, y);
 
+    cs->Init(x, y);
+
 	//Backtesting results
-    //vector<double> backtest = RSI(y);
-	vector<double> backtest = cs->RSI(y);
+    vector<double> backtest = cs->RSI();
     x.clear();
 
     for (int i = 0; i < backtest.size(); i++)
@@ -47,133 +56,9 @@ void CTradingPlatform::runStrategy()
 
     plotBacktest(x, backtest);
 
+    stat->runUnivariateTests(CAsset(x, y));
+
     debugOutput->insertPlainText("Running RSI ... done\n");
-}
-
-
-vector<double> CTradingPlatform::SMA_crossover(vector<double> p)
-{
-    double dt = 1.0 / 252.0;	//compound daily
-    double r = 0.01;
-    double rate = exp(r * dt);	//rate of cash growth
-    double cash = 100;	//invested in bonds
-    double shares = 10;	//invested in 'path'
-    double returns = 0;	//portfolio returns
-    vector<double> value;	//portfolio value
-
-    int slowPeriod = 50;
-    int fastPeriod = 10;
-
-    pair<vector<double>, vector<double>> ma_slow = ct->SMA(p, slowPeriod);
-    pair<vector<double>, vector<double>> ma_fast = ct->SMA(p, fastPeriod);
-
-    bool buySignal = false;
-    bool shortSignal = false;
-
-    int idx = 0;
-
-    double longSize = 0.9; //90% of cash used for each buy order
-    double sellSize = 0.5; //sell 90% of shares
-
-    for (int i = 1; i < p.size(); i++) {
-
-		//a 20 day SMA has the first 20 days blank...
-        if (i > slowPeriod) {
-            idx = i - slowPeriod;
-			//A buy signal is when the fast SMA cross above the slow SMA
-            if ((ma_slow.second[idx] < ma_fast.second[idx]) && cash > 0) {
-				//only if the fast SMA was below the slow SMA in the last period
-                if (ma_slow.second[idx - 1] > ma_fast.second[idx - 1]) {
-					//size of this order
-					double numShares = longSize * cash / p[i];
-                    shares += numShares;
-
-					double totalCost = p[i] * numShares;
-					cash -= totalCost;
-
-                    string out = "Buy shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-                    output->insertItem(output->count() + 1, QString(out.c_str()));
-                }
-            }
-
-			//look for a sell signal
-            if (ma_slow.second[idx] > ma_fast.second[idx]) {
-                if ((ma_slow.second[idx - 1] < ma_fast.second[idx - 1]) && shares >= 10) {
-					double numShares = sellSize * shares;
-					shares -= numShares;
-
-					double totalProfit = numShares * p[i];
-					cash += totalProfit;
-
-                    string out = "Sold shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-                    output->insertItem(output->count() + 1, QString(out.c_str()));
-                }
-            }
-        }
-
-        cash *= rate;
-        value.push_back(cash + shares*p[i]);
-    }
-
-    return value;
-}
-
-vector<double> CTradingPlatform::RSI(vector<double> p)
-{
-	double dt = 1.0 / 252.0;	//compound daily
-	double r = 0.01;
-	double rate = exp(r * dt);	//rate of cash growth
-	double cash = 100;	//invested in bonds
-	double shares = 10;	//invested in 'path'
-	double returns = 0;	//portfolio returns
-	vector<double> value;	//portfolio value
-
-	pair<vector<double>, vector<double>> rsi = ct->RSI(p);
-
-	bool buySignal = false;
-	bool shortSignal = false;
-
-	int idx = 0;
-
-	double longSize = 0.9; //90% of cash used for each buy order
-	double sellSize = 0.5; //sell 90% of shares
-
-	int start = 15;
-
-	for (int i = 1; i < p.size(); i++) {
-
-		if (i > start) {
-			idx = i - start;
-			if ((rsi.second[idx] < 30) && cash > 0) {
-				//size of this order
-				double numShares = longSize * cash / p[i];
-				shares += numShares;
-
-				double totalCost = p[i] * numShares;
-				cash -= totalCost;
-
-				string out = "Buy shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-				output->insertItem(output->count() + 1, QString(out.c_str()));
-			}
-
-			//look for a sell signal
-			if (rsi.second[idx] > 70 & shares > 0) {
-				double numShares = sellSize * shares;
-				shares -= numShares;
-
-				double totalProfit = numShares * p[i];
-				cash += totalProfit;
-
-				string out = "Sold shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-				output->insertItem(output->count() + 1, QString(out.c_str()));
-			}
-		}
-
-		cash *= rate;
-		value.push_back(cash + shares*p[i]);
-	}
-
-	return value;
 }
 
 //Plot the backtesting window with the results of testing the strategy
@@ -285,7 +170,7 @@ vector<double> CTradingPlatform::brownian_motion(const int N)
 
     for (int i = 1; i < N; i++) {
         Wt[i] = sqrt(dt)*dist(gen) + Wt[i - 1];
-        p[i] = exp((mu + 1 / 2 * sigma * sigma)*dt + Wt[i]);
+        p[i] = exp((mu - 1 / 2 * sigma * sigma)*dt + Wt[i]);
     }
 
     return p;

@@ -2,7 +2,7 @@
 
 
 
-CStrategy::CStrategy(QListWidget *out, QPlainTextEdit *debug, CTechnical *tech)
+CStrategy::CStrategy(QTableWidget *out, QPlainTextEdit *debug, CTechnical *tech)
 {
 	output = out;
 	debugOutput = debug;
@@ -14,24 +14,88 @@ CStrategy::~CStrategy()
 {
 }
 
+void CStrategy::Init(vector<double> x, vector<double> y)
+{
+    s.x = x;
+    s.value = y;
+    reset();
+}
+
+void CStrategy::reset()
+{
+    dt = 1.0 / 252.0;	//compound daily
+    r = 0.01;
+    rate = exp(r * dt);	//rate of cash growth
+    cash = 100;	//invested in bonds
+    shares = 10;	//invested in 'path'
+    returns = 0;	//portfolio returns
+    txnCost = 0.01;
+
+    output->clearContents();
+    lastRow = 0;
+}
+
+void CStrategy::evolve(int t)
+{
+    cash *= rate;
+    value.push_back(cash + shares*s.value[t]);
+}
+
+void CStrategy::updateTable(string order)
+{
+    //1st cell is an order description with number of shares
+    output->insertRow(lastRow);
+    output->setItem(lastRow, 0, new QTableWidgetItem(QString(order.c_str())));
+
+
+    //2nd cell is current value of portfolio
+    string out = to_string(value.back());
+    output->setItem(lastRow, 1, new QTableWidgetItem(QString(out.c_str())));
+
+    //3rd cell is cash amount
+    out = to_string(cash);
+    output->setItem(lastRow, 2, new QTableWidgetItem(QString(out.c_str())));
+
+    //4th cell is number of shares
+    out = to_string(shares);
+    output->setItem(lastRow, 3, new QTableWidgetItem(QString(out.c_str())));
+
+    lastRow++;
+}
+
+void CStrategy::execLong(int size, int t)
+{
+    shares += size;
+
+    double totalCost = s.value[t] * size + txnCost;
+    cash -= totalCost;
+
+    string out = "Buy " + to_string(size) + " shares";
+    updateTable(out);
+}
+
+void CStrategy::execShort(int size, int t)
+{
+    shares -= size;
+
+    double totalProfit = size * s.value[t] - txnCost;
+    cash += totalProfit;
+
+    string out = "Sell " + to_string(size) + " shares";
+    updateTable(out);
+}
+
+
+
 vector<double> CStrategy::SMA_crossover(vector<double> p)
 {
-	double dt = 1.0 / 252.0;	//compound daily
-	double r = 0.01;
-	double rate = exp(r * dt);	//rate of cash growth
-	double cash = 100;	//invested in bonds
-	double shares = 10;	//invested in 'path'
-	double returns = 0;	//portfolio returns
-	vector<double> value;	//portfolio value
+    reset();
 
 	int slowPeriod = 50;
 	int fastPeriod = 10;
 
 	pair<vector<double>, vector<double>> ma_slow = ct->SMA(p, slowPeriod);
 	pair<vector<double>, vector<double>> ma_fast = ct->SMA(p, fastPeriod);
-
-	bool buySignal = false;
-	bool shortSignal = false;
 
 	int idx = 0;
 
@@ -47,54 +111,35 @@ vector<double> CStrategy::SMA_crossover(vector<double> p)
 			if ((ma_slow.second[idx] < ma_fast.second[idx]) && cash > 0) {
 				//only if the fast SMA was below the slow SMA in the last period
 				if (ma_slow.second[idx - 1] > ma_fast.second[idx - 1]) {
-					//size of this order
+
 					double numShares = longSize * cash / p[i];
-					shares += numShares;
-
-					double totalCost = p[i] * numShares;
-					cash -= totalCost;
-
-					string out = "Buy shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-					output->insertItem(output->count() + 1, QString(out.c_str()));
+                    execLong(numShares, i);
 				}
 			}
 
 			//look for a sell signal
 			if (ma_slow.second[idx] > ma_fast.second[idx]) {
 				if ((ma_slow.second[idx - 1] < ma_fast.second[idx - 1]) && shares >= 10) {
-					double numShares = sellSize * shares;
-					shares -= numShares;
 
-					double totalProfit = numShares * p[i];
-					cash += totalProfit;
-
-					string out = "Sold shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-					output->insertItem(output->count() + 1, QString(out.c_str()));
+                    double numShares = sellSize * shares;
+                    execShort(numShares, i);
 				}
 			}
 		}
 
-		cash *= rate;
-		value.push_back(cash + shares*p[i]);
+        evolve(i);
 	}
 
 	return value;
 }
 
-vector<double> CStrategy::RSI(vector<double> p)
+vector<double> CStrategy::RSI()
 {
-	double dt = 1.0 / 252.0;	//compound daily
-	double r = 0.01;
-	double rate = exp(r * dt);	//rate of cash growth
-	double cash = 100;	//invested in bonds
-	double shares = 10;	//invested in 'path'
-	double returns = 0;	//portfolio returns
-	vector<double> value;	//portfolio value
+    reset();
+
+    vector<double> p = s.value;
 
 	pair<vector<double>, vector<double>> rsi = ct->RSI(p);
-
-	bool buySignal = false;
-	bool shortSignal = false;
 
 	int idx = 0;
 
@@ -110,30 +155,17 @@ vector<double> CStrategy::RSI(vector<double> p)
 			if ((rsi.second[idx] < 30) && cash > 0) {
 				//size of this order
 				double numShares = longSize * cash / p[i];
-				shares += numShares;
-
-				double totalCost = p[i] * numShares;
-				cash -= totalCost;
-
-				string out = "Buy shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-				output->insertItem(output->count() + 1, QString(out.c_str()));
+                execLong(numShares, i);
 			}
 
 			//look for a sell signal
 			if (rsi.second[idx] > 70 & shares > 0) {
 				double numShares = sellSize * shares;
-				shares -= numShares;
-
-				double totalProfit = numShares * p[i];
-				cash += totalProfit;
-
-				string out = "Sold shares at x = " + to_string(i) + ". Total shares: " + to_string(shares);
-				output->insertItem(output->count() + 1, QString(out.c_str()));
+                execShort(numShares, i);
 			}
 		}
 
-		cash *= rate;
-		value.push_back(cash + shares*p[i]);
+        evolve(i);
 	}
 
 	return value;
