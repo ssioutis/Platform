@@ -6,7 +6,6 @@
 #include "ctechnical.h"
 #include "CStrategy.h"
 #include "cstats.h"
-#include <C:\Program Files\MATLAB\MATLAB Production Server\R2015a\extern\include\engine.h>
 #include <QtWidgets/QWidget>
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
@@ -54,6 +53,9 @@ private:
     QTableWidget *valueTable;
     QGroupBox *autoStats;
     QListWidget *statsOutput;
+    QTabWidget *tabPages;
+    QWidget *page1;
+    QWidget *liveData;
 
 	//Non-GUI
 

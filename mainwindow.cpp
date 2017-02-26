@@ -2,10 +2,8 @@
 #include "ui_mainwindow.h"
 #include "ctradingplatform.h"
 #include <vector>
-#include <Windows.h>
 #include <fstream>
 #include <fcntl.h>
-#include <io.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),

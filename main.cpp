@@ -12,10 +12,8 @@
 #include <random>
 #include <cmath>
 #include <vector>
-#include <Windows.h>
 #include <fstream>
 #include <fcntl.h>
-#include <io.h>
 
 using namespace std;
 
@@ -23,6 +21,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     MainWindow w;
+
     w.show();
 
 

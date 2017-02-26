@@ -5,7 +5,6 @@
 #include "ui_mainwindow.h"
 #include "ctechnical.h"
 #include "CStrategy.h"
-#include <C:\dlib\optimization.h>
 #include <QtWidgets/QWidget>
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>

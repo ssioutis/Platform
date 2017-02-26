@@ -4,31 +4,50 @@ CTradingPlatform::CTradingPlatform()
 {
 }
 
+
+// Initialize GUI layout
 void CTradingPlatform::Init(Ui::MainWindow *ui)
 {
+    // GUI
+
+    // ALl graphical components (Qt objects)
     chart = ui->Chart;
     backtest = ui->Backtest;
     debugOutput = ui->debugOutput;
     valueTable = ui->valueTable;
     autoStats = ui->autoStats;
     statsOutput = ui->statsOutput;
+    tabPages = ui->tabWidget;
+    page1 = ui->page1;
+    liveData = ui->liveData;
 
-    chart->setGeometry(QRect(0, 0, 800, 400));
-    backtest->setGeometry(QRect(0, 400, 800, 200));
+    /*
+    // Resize objects
+    tabPages->setGeometry(QRect(0, 0, 1000, 1000));
+    chart->setGeometry(QRect(20, 80, 800, 400));
+    backtest->setGeometry(QRect(20, 400, 800, 200));
     debugOutput->setGeometry(QRect(20, 630, 700, 200));
 
-    valueTable->setGeometry(QRect(800, 20, 450, 500));
+    // Portfolio output/value table
+    valueTable->setGeometry(QRect(800, 80, 450, 500));
     valueTable->setRowCount(0);
     valueTable->setColumnCount(4);
 
+    // Auto-stats group box and text output box
     autoStats->setGeometry(QRect(800, 550, 440, 440));
     statsOutput->setGeometry(QRect(20,20,400,400));
+
+    */
+    // Non-GUI objects
 
     ct = new CTechnical(debugOutput);
     cs = new CStrategy(valueTable, debugOutput, ct);
     stat = new CStats(statsOutput);
 
+
     debugOutput->insertPlainText("Initialization complete\n");
+
+
 }
 
 //Execute the SMA crossover strategy
